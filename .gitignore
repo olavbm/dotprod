@@ -1,0 +1,24 @@
+# Compiled binaries
+benchmark_cpp
+benchmark_rust
+benchmark_large
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Generated results
+results_python_*.json
+profile_output.txt
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
