@@ -16,21 +16,77 @@ from typing import Dict, List, Tuple, Any
 class StandardizedBenchmark:
     """Standardized benchmark following cross-language specification."""
     
-    def __init__(self, matrix_size: int = 100, num_runs: int = 10, warmup_runs: int = 3):
+    def __init__(self, matrix_size: int = 100, num_runs: int = 10, warmup_runs: int = 3, dtype: str = "float64"):
         self.matrix_size = matrix_size
         self.num_runs = num_runs
         self.warmup_runs = warmup_runs
+        self.dtype_str = dtype
+        self.dtype = self._get_numpy_dtype(dtype)
         self.results = {}
+        
+    def _get_numpy_dtype(self, dtype_str: str):
+        """Convert string dtype to numpy dtype."""
+        dtype_map = {
+            "float64": np.float64,
+            "float32": np.float32,
+            "int8": np.int8,
+            "int16": np.int16,
+            "int32": np.int32,
+            "int64": np.int64,
+            "uint8": np.uint8,
+            "uint16": np.uint16,
+            "uint32": np.uint32,
+            "uint64": np.uint64,
+            "f64": np.float64,
+            "f32": np.float32,
+            "i8": np.int8,
+            "i16": np.int16,
+            "i32": np.int32,
+            "i64": np.int64,
+            "u8": np.uint8,
+            "u16": np.uint16,
+            "u32": np.uint32,
+            "u64": np.uint64,
+        }
+        
+        if dtype_str not in dtype_map:
+            raise ValueError(f"Unsupported dtype: {dtype_str}. Supported types: {list(dtype_map.keys())}")
+        
+        return dtype_map[dtype_str]
         
     def generate_matrices(self) -> Tuple[np.ndarray, np.ndarray]:
         """Generate reproducible test matrices according to specification."""
         # Matrix A: seed 42
         np.random.seed(42)
-        A = np.random.rand(self.matrix_size, self.matrix_size).astype(np.float64)
+        if self.dtype in [np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64]:
+            # For integer types, generate values in appropriate range
+            if self.dtype == np.int8:
+                A = np.random.randint(-10, 10, (self.matrix_size, self.matrix_size), dtype=self.dtype)
+            elif self.dtype == np.uint8:
+                A = np.random.randint(0, 20, (self.matrix_size, self.matrix_size), dtype=self.dtype)
+            elif self.dtype in [np.int16, np.uint16]:
+                A = np.random.randint(-100, 100, (self.matrix_size, self.matrix_size), dtype=self.dtype)
+            else:  # int32, int64, uint32, uint64
+                A = np.random.randint(-1000, 1000, (self.matrix_size, self.matrix_size), dtype=self.dtype)
+        else:
+            # For floating point types
+            A = np.random.rand(self.matrix_size, self.matrix_size).astype(self.dtype)
         
         # Matrix B: seed 43
         np.random.seed(43)
-        B = np.random.rand(self.matrix_size, self.matrix_size).astype(np.float64)
+        if self.dtype in [np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64]:
+            # For integer types, generate values in appropriate range
+            if self.dtype == np.int8:
+                B = np.random.randint(-10, 10, (self.matrix_size, self.matrix_size), dtype=self.dtype)
+            elif self.dtype == np.uint8:
+                B = np.random.randint(0, 20, (self.matrix_size, self.matrix_size), dtype=self.dtype)
+            elif self.dtype in [np.int16, np.uint16]:
+                B = np.random.randint(-100, 100, (self.matrix_size, self.matrix_size), dtype=self.dtype)
+            else:  # int32, int64, uint32, uint64
+                B = np.random.randint(-1000, 1000, (self.matrix_size, self.matrix_size), dtype=self.dtype)
+        else:
+            # For floating point types
+            B = np.random.rand(self.matrix_size, self.matrix_size).astype(self.dtype)
         
         return A, B
     
@@ -38,10 +94,17 @@ class StandardizedBenchmark:
         """Verify result correctness using reference implementation."""
         reference = np.dot(A, B)
         
-        # Check specific elements and overall tolerance
-        tolerance = 1e-10
+        # Set tolerance based on data type
+        if self.dtype in [np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64]:
+            # For integer types, use exact comparison
+            tolerance = 0
+            return np.array_equal(result, reference)
+        elif self.dtype == np.float32:
+            tolerance = 1e-6
+        else:  # float64 and other float types
+            tolerance = 1e-10
         
-        # Check a few specific elements
+        # Check specific elements and overall tolerance
         if not np.allclose(result[0, 0], reference[0, 0], rtol=tolerance):
             return False
         
@@ -66,7 +129,7 @@ class StandardizedBenchmark:
         A, B = self.generate_matrices()
         
         # Pre-allocate result matrix
-        result = np.zeros((self.matrix_size, self.matrix_size), dtype=np.float64)
+        result = np.zeros((self.matrix_size, self.matrix_size), dtype=self.dtype)
         
         # Warmup runs
         for _ in range(self.warmup_runs):
@@ -98,7 +161,7 @@ class StandardizedBenchmark:
             "implementation": impl_name,
             "library_version": library_version,
             "matrix_size": self.matrix_size,
-            "data_type": "float64",
+            "data_type": self.dtype_str,
             "num_runs": self.num_runs,
             "results": {
                 "mean_time_ms": round(mean_time_ms, 6),
@@ -174,7 +237,7 @@ class StandardizedBenchmark:
         if cols_a != rows_b:
             raise ValueError("Matrix dimensions don't match")
         
-        result = np.zeros((rows_a, cols_b), dtype=np.float64)
+        result = np.zeros((rows_a, cols_b), dtype=self.dtype)
         
         for i in range(rows_a):
             for j in range(cols_b):
@@ -186,7 +249,7 @@ class StandardizedBenchmark:
     def save_results(self, results: Dict[str, Any], filename: str = None):
         """Save benchmark results to JSON file."""
         if filename is None:
-            filename = f"results_python_{self.matrix_size}x{self.matrix_size}.json"
+            filename = f"results_python_{self.matrix_size}x{self.matrix_size}_{self.dtype_str}.json"
         
         with open(filename, 'w') as f:
             json.dump(results, f, indent=2)
@@ -200,7 +263,7 @@ class StandardizedBenchmark:
         print(f"{'='*80}")
         print(f"Language: {results['language']} {results['version']}")
         print(f"Matrix Size: {self.matrix_size}×{self.matrix_size}")
-        print(f"Data Type: float64")
+        print(f"Data Type: {self.dtype_str}")
         print(f"Runs: {self.num_runs}")
         print(f"Timestamp: {results['timestamp']}")
         print(f"NumPy Version: {results['system_info']['numpy_version']}")
@@ -246,6 +309,8 @@ def main():
                        help='Output JSON file (default: auto-generated)')
     parser.add_argument('--sizes', nargs='+', type=int, 
                        help='Multiple matrix sizes to test')
+    parser.add_argument('--dtype', type=str, default='float64',
+                       help='Data type for matrices (default: float64). Supported: float64, float32, int8, int16, int32, int64, uint8, uint16, uint32, uint64, f64, f32, i8, i16, i32, i64, u8, u16, u32, u64')
     
     args = parser.parse_args()
     
@@ -258,7 +323,8 @@ def main():
         benchmark = StandardizedBenchmark(
             matrix_size=size,
             num_runs=args.runs,
-            warmup_runs=args.warmup
+            warmup_runs=args.warmup,
+            dtype=args.dtype
         )
         
         results = benchmark.run_all_benchmarks()
@@ -267,7 +333,7 @@ def main():
         # Save results
         output_file = args.output
         if not output_file:
-            output_file = f"results_python_{size}x{size}.json"
+            output_file = f"results_python_{size}x{size}_{args.dtype}.json"
         
         benchmark.save_results(results, output_file)
 
