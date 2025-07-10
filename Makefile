@@ -5,6 +5,7 @@ PYTHON = python3
 STANDARDIZED_SCRIPT = benchmark_standardized.py
 RUNS = 10
 SIZE = 100
+DTYPE = float64
 
 # Compiler settings
 CXX = g++
@@ -32,14 +33,19 @@ help:
 	@echo "  clean           - Clean up generated files"
 	@echo "  check-deps      - Check if dependencies are installed"
 	@echo ""
+	@echo "PARAMETERS:"
+	@echo "  SIZE=<int>      - Matrix size (default: 100)"
+	@echo "  RUNS=<int>      - Number of benchmark runs (default: 10)"
+	@echo "  DTYPE=<str>     - Data type (default: float64)"
+	@echo ""
 	@echo "Examples:"
-	@echo "  make standardized SIZE=500 RUNS=20"
-	@echo "  make compare-languages SIZE=100"
-	@echo "  make run-rust SIZE=200 RUNS=3"
+	@echo "  make standardized SIZE=500 RUNS=20 DTYPE=float32"
+	@echo "  make compare-languages SIZE=100 DTYPE=int32"
+	@echo "  make run-rust SIZE=200 RUNS=3 DTYPE=float64"
 
 test:
 	@echo "Running correctness test..."
-	$(PYTHON) $(STANDARDIZED_SCRIPT) --size 10 --runs 1
+	$(PYTHON) $(STANDARDIZED_SCRIPT) --size 10 --runs 1 --dtype $(DTYPE)
 
 # Clean up any generated files
 clean:
@@ -59,11 +65,11 @@ check-deps:
 # STANDARDIZED BENCHMARKS
 standardized:
 	@echo "Running standardized Python benchmark..."
-	$(PYTHON) $(STANDARDIZED_SCRIPT) --size $(SIZE) --runs $(RUNS)
+	$(PYTHON) $(STANDARDIZED_SCRIPT) --size $(SIZE) --runs $(RUNS) --dtype $(DTYPE)
 
 standardized-all:
 	@echo "Running standardized benchmark for multiple sizes..."
-	$(PYTHON) $(STANDARDIZED_SCRIPT) --sizes 100 500 1000 --runs $(RUNS)
+	$(PYTHON) $(STANDARDIZED_SCRIPT) --sizes 100 500 1000 --runs $(RUNS) --dtype $(DTYPE)
 
 # Compile C++ benchmark
 compile-cpp:
@@ -83,32 +89,33 @@ compile-rust:
 # Run C++ benchmark
 run-cpp: compile-cpp
 	@echo "Running C++ benchmark..."
-	./benchmark_cpp $(SIZE) $(RUNS)
+	./benchmark_cpp $(SIZE) $(RUNS) $(DTYPE)
 
 # Run Rust benchmark
 run-rust: compile-rust
 	@echo "Running Rust benchmark..."
-	./benchmark_rust $(SIZE) $(RUNS)
+	./benchmark_rust $(SIZE) $(RUNS) $(DTYPE)
 
 # Compare Python, C++, and Rust
 compare-languages: compile-cpp compile-rust
 	@echo "========================================="
 	@echo "CROSS-LANGUAGE BENCHMARK COMPARISON"
 	@echo "Matrix Size: $(SIZE)x$(SIZE)"
+	@echo "Data Type: $(DTYPE)"
 	@echo "Runs: $(RUNS)"
 	@echo "========================================="
 	@echo ""
 	@echo "PYTHON RESULTS:"
 	@echo "---------------"
-	@$(PYTHON) $(STANDARDIZED_SCRIPT) --size $(SIZE) --runs $(RUNS)
+	@$(PYTHON) $(STANDARDIZED_SCRIPT) --size $(SIZE) --runs $(RUNS) --dtype $(DTYPE)
 	@echo ""
 	@echo "C++ RESULTS:"
 	@echo "------------"
-	@./benchmark_cpp $(SIZE) $(RUNS)
+	@./benchmark_cpp $(SIZE) $(RUNS) $(DTYPE)
 	@echo ""
 	@echo "RUST RESULTS:"
 	@echo "-------------"
-	@./benchmark_rust $(SIZE) $(RUNS)
+	@./benchmark_rust $(SIZE) $(RUNS) $(DTYPE)
 
 # Generate standardized benchmark report
 report:
@@ -117,10 +124,11 @@ report:
 	@echo "System: $$(uname -a)" >> benchmark_report.txt
 	@echo "Python: $$($(PYTHON) --version)" >> benchmark_report.txt
 	@echo "NumPy: $$($(PYTHON) -c 'import numpy; print(numpy.__version__)')" >> benchmark_report.txt
+	@echo "Data Type: $(DTYPE)" >> benchmark_report.txt
 	@echo "" >> benchmark_report.txt
 	@echo "Benchmark Results:" >> benchmark_report.txt
 	@echo "==================" >> benchmark_report.txt
-	$(PYTHON) $(STANDARDIZED_SCRIPT) --sizes 50 100 200 500 --runs 10 >> benchmark_report.txt
+	$(PYTHON) $(STANDARDIZED_SCRIPT) --sizes 50 100 200 500 --runs 10 --dtype $(DTYPE) >> benchmark_report.txt
 	@echo "Report generated: benchmark_report.txt"
 
 # Make the benchmark script executable
