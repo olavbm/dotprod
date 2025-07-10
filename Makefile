@@ -2,7 +2,7 @@
 # Usage: make benchmark, make benchmark-small, make benchmark-large, etc.
 
 PYTHON = python3
-STANDARDIZED_SCRIPT = benchmark_standardized.py
+STANDARDIZED_SCRIPT = benchmarks/src/python/benchmark_standardized.py
 RUNS = 10
 SIZE = 100
 DTYPE = float64
@@ -12,6 +12,12 @@ CXX = g++
 CXXFLAGS = -O3 -std=c++17
 RUSTC = rustc
 RUSTFLAGS = -C opt-level=3 -C target-feature=+avx2,+fma -C target-cpu=native
+
+# Paths
+BENCHMARK_DIR = benchmarks
+SRC_DIR = $(BENCHMARK_DIR)/src
+BIN_DIR = $(BENCHMARK_DIR)/bin
+RESULTS_DIR = $(BENCHMARK_DIR)/results
 
 .PHONY: help test clean
 .PHONY: standardized standardized-all compile-cpp compile-rust run-cpp run-rust compare-languages
@@ -52,8 +58,10 @@ clean:
 	find . -name "*.pyc" -delete
 	find . -name "__pycache__" -delete
 	rm -f profile_output.txt
-	rm -f benchmark_cpp benchmark_rust benchmark_large
-	rm -f results_python_*.json
+	rm -f $(BIN_DIR)/benchmark_*
+	rm -f $(RESULTS_DIR)/python/*.json
+	rm -f $(RESULTS_DIR)/cpp/*.json
+	rm -f $(RESULTS_DIR)/rust/*.json
 
 # Check if required dependencies are installed
 check-deps:
@@ -74,27 +82,27 @@ standardized-all:
 # Compile C++ benchmark
 compile-cpp:
 	@echo "Compiling C++ benchmark..."
-	$(CXX) $(CXXFLAGS) -o benchmark_cpp benchmark_example.cpp
+	$(CXX) $(CXXFLAGS) -o $(BIN_DIR)/benchmark_cpp $(SRC_DIR)/cpp/benchmark_example.cpp
 
 # Compile C++ benchmark with Eigen (if available)
 compile-cpp-eigen:
 	@echo "Compiling C++ benchmark with Eigen..."
-	$(CXX) $(CXXFLAGS) -DUSE_EIGEN -o benchmark_cpp_eigen benchmark_example.cpp
+	$(CXX) $(CXXFLAGS) -DUSE_EIGEN -o $(BIN_DIR)/benchmark_cpp_eigen $(SRC_DIR)/cpp/benchmark_example.cpp
 
 # Compile Rust benchmark
 compile-rust:
 	@echo "Compiling Rust benchmark..."
-	$(RUSTC) $(RUSTFLAGS) -o benchmark_rust benchmark_example.rs
+	$(RUSTC) $(RUSTFLAGS) -o $(BIN_DIR)/benchmark_rust $(SRC_DIR)/rust/benchmark_example.rs
 
 # Run C++ benchmark
 run-cpp: compile-cpp
 	@echo "Running C++ benchmark..."
-	./benchmark_cpp $(SIZE) $(RUNS) $(DTYPE)
+	$(BIN_DIR)/benchmark_cpp $(SIZE) $(RUNS) $(DTYPE)
 
 # Run Rust benchmark
 run-rust: compile-rust
 	@echo "Running Rust benchmark..."
-	./benchmark_rust $(SIZE) $(RUNS) $(DTYPE)
+	$(BIN_DIR)/benchmark_rust $(SIZE) $(RUNS) $(DTYPE)
 
 # Compare Python, C++, and Rust
 compare-languages: compile-cpp compile-rust
@@ -111,11 +119,11 @@ compare-languages: compile-cpp compile-rust
 	@echo ""
 	@echo "C++ RESULTS:"
 	@echo "------------"
-	@./benchmark_cpp $(SIZE) $(RUNS) $(DTYPE)
+	@$(BIN_DIR)/benchmark_cpp $(SIZE) $(RUNS) $(DTYPE)
 	@echo ""
 	@echo "RUST RESULTS:"
 	@echo "-------------"
-	@./benchmark_rust $(SIZE) $(RUNS) $(DTYPE)
+	@$(BIN_DIR)/benchmark_rust $(SIZE) $(RUNS) $(DTYPE)
 
 # Generate standardized benchmark report
 report:
