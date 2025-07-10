@@ -94,6 +94,12 @@ compile-rust:
 	@echo "Compiling Rust benchmark..."
 	$(RUSTC) $(RUSTFLAGS) -o $(BIN_DIR)/benchmark_rust $(SRC_DIR)/rust/benchmark_example.rs
 
+# Compile optimized Rust benchmark with libraries
+compile-rust-optimized:
+	@echo "Compiling optimized Rust benchmark..."
+	cd $(SRC_DIR)/rust && cargo build --release
+	cp $(SRC_DIR)/rust/target/release/rust_optimized_benchmark $(BIN_DIR)/benchmark_rust_optimized
+
 # Run C++ benchmark
 run-cpp: compile-cpp
 	@echo "Running C++ benchmark..."
@@ -103,6 +109,11 @@ run-cpp: compile-cpp
 run-rust: compile-rust
 	@echo "Running Rust benchmark..."
 	$(BIN_DIR)/benchmark_rust $(SIZE) $(RUNS) $(DTYPE)
+
+# Run optimized Rust benchmark
+run-rust-optimized: compile-rust-optimized
+	@echo "Running optimized Rust benchmark..."
+	$(BIN_DIR)/benchmark_rust_optimized $(SIZE) $(RUNS) $(DTYPE)
 
 # Compare Python, C++, and Rust
 compare-languages: compile-cpp compile-rust
